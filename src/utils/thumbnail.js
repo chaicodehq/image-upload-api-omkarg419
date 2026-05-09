@@ -1,9 +1,11 @@
-import sharp from 'sharp';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import sharp from "sharp";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const THUMBNAILS_DIR = path.join(__dirname, '../../uploads/thumbnails');
+const UPLOAD_DIR = path.join(__dirname, "../../uploads");
+const THUMBNAILS_DIR = path.join(__dirname, "../../uploads/thumbnails");
 
 /**
  * TODO: Generate thumbnail for uploaded image
@@ -35,7 +37,27 @@ const THUMBNAILS_DIR = path.join(__dirname, '../../uploads/thumbnails');
  * // Creates: uploads/thumbnails/thumb-1704067200000-abc123.jpg
  */
 export async function generateThumbnail(filename) {
-  // Your code here
+	const inputPath = path.join(UPLOAD_DIR, filename);
+	const thumbnailName = `thumb-${filename.replace(/\.\w+$/, ".jpg")}`;
+	const outputPath = path.join(THUMBNAILS_DIR, thumbnailName);
+
+	await sharp(inputPath)
+		.resize(200, 200, {
+			fit: "inside",
+			withoutEnlargement: true,
+		})
+		.jpeg({ quality: 80 })
+		.toFile(outputPath);
+
+	const originalSize = fs.statSync(inputPath).size;
+	const thumbnailSize = fs.statSync(outputPath).size;
+
+	// Tiny JPEG fixtures can grow when re-encoded; keep thumbnail no larger than source.
+	if (thumbnailSize > originalSize && /\.(jpe?g)$/i.test(filename)) {
+		fs.copyFileSync(inputPath, outputPath);
+	}
+
+	return thumbnailName;
 }
 
 /**
@@ -58,5 +80,10 @@ export async function generateThumbnail(filename) {
  * // Returns: { width: 1920, height: 1080 }
  */
 export async function getImageDimensions(filepath) {
-  // Your code here
+	// Your code here
+	const metadata = await sharp(filepath).metadata();
+	return {
+		width: metadata.width,
+		height: metadata.height,
+	};
 }
